@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUCY_OS // Neural Movies</title>
+    <style>
+	
+	.debug-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 0, 60, 0.9);
+    color: white;
+    font-size: 0.65rem;
+    padding: 5px;
+    z-index: 30;
+    pointer-events: none;
+    font-family: monospace;
+    display: none; /* Caché par défaut */
+}
+
+/* Quand le mode debug est actif, on affiche les infos */
+body.debug-mode .debug-info {
+    display: block;
+}
+
+        :root {
+            --cyber-green: #00ff41;
+            --cyber-red: #ff003c;
+            --cyber-blue: #00f0ff;
+            --bg-dark: #050505;
+            --card-bg: #111;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding-top: 130px; /* Espace pour le gros header fixe */
+            overflow-x: hidden;
+        }
+
+        /* --- HEADER FIXED (LUCY & FILTRES) --- */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(5, 5, 5, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--cyber-blue);
+            z-index: 1000;
+            padding: 10px 20px;
+            box-sizing: border-box;
+        }
+
+
+		
+		.modal-overlay {
+				display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+				background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 9999;
+				justify-content: center; align-items: center;
+			}
+			.modal-content {
+				background: #050505; border: 1px solid var(--cyber-blue);
+				padding: 25px; width: 320px; text-align: center;
+				box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+			}
+			.modal-header { color: var(--cyber-blue); font-family: monospace; font-size: 0.7rem; margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 10px; }
+			#modal-message { font-size: 0.9rem; margin-bottom: 20px; letter-spacing: 1px; }
+			.modal-btns { display: flex; gap: 10px; justify-content: center; }
+			.m-btn { 
+				background: none; border: 1px solid; padding: 8px 15px; cursor: pointer; 
+				font-size: 0.7rem; font-family: monospace; transition: 0.3s;
+			}
+			.m-yes { border-color: var(--cyber-green); color: var(--cyber-green); }
+			.m-no { border-color: var(--cyber-red); color: var(--cyber-red); }
+			.m-btn:hover { background: white; color: black; box-shadow: 0 0 10px white; }
+
+		.tmdb-rating {
+			position: absolute; /* IMPORTANT : place la note DANS la carte */
+			bottom: 10px;
+			right: 10px;
+			background: rgba(0, 0, 0, 0.5);
+			color: var(--cyber-green);
+			border: 1px solid var(--cyber-green);
+			padding: 2px 6px;
+			font-size: 0.75rem;
+			font-family: monospace;
+			z-index: 25; 
+			border-radius: 2px;
+			pointer-events: none; /* Empêche la note de gêner le clic/survol */
+		}
+
+		/* --- PROFILE MANAGER UI --- */
+		.profile-manager {
+			display: flex;
+			align-items: center;
+			gap: 5px;
+			background: rgba(0, 240, 255, 0.05);
+			padding: 5px 10px;
+			border: 1px dashed var(--cyber-blue);
+			border-radius: 4px;
+		
+		
+		}
+
+		#profile-select {
+			background: #000;
+			color: var(--cyber-blue);
+			border: 1px solid var(--cyber-blue);
+			font-size: 0.7rem;
+			padding: 4px;
+			outline: none;
+			font-family: monospace;
+			text-transform: uppercase;
+		}
+
+		.profile-manager button {
+			background: transparent;
+			border: 1px solid var(--cyber-blue);
+			color: var(--cyber-blue);
+			cursor: pointer;
+			width: 24px;
+			height: 24px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-weight: bold;
+			transition: 0.3s;
+		}
+
+		.profile-manager button:hover {
+			background: var(--cyber-blue);
+			color: black;
+			box-shadow: 0 0 10px var(--cyber-blue);
+		}
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .system-status { font-size: 0.8rem; font-family: monospace; }
+
+        /* --- BARRE DE CONTROLE --- */
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        #main-search {
+            flex-grow: 1;
+            background: #111;
+            border: 1px solid var(--cyber-green);
+            color: white;
+            padding: 8px;
+            outline: none;
+        }
+
+        .lang-select button, .filter-btn, .refresh-btn {
+            background: transparent;
+            border: 1px solid var(--cyber-blue);
+            color: var(--cyber-blue);
+            cursor: pointer;
+            padding: 6px 12px;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            transition: 0.3s;
+        }
+
+        .lang-select button.active, .filter-btn.active {
+            background: var(--cyber-blue) !important;
+            color: black !important;
+            box-shadow: 0 0 15px var(--cyber-blue);
+            font-weight: bold;
+        }
+
+		/* Custom Scrollbar Cyberpunk pour le synopsis et les filtres */
+		.synopsis::-webkit-scrollbar, .controls::-webkit-scrollbar {
+			width: 4px;
+			height: 4px;
+		}
+		.synopsis::-webkit-scrollbar-thumb, .controls::-webkit-scrollbar-thumb {
+			background: var(--cyber-blue);
+			border-radius: 10px;
+		}
+		.synopsis::-webkit-scrollbar-track, .controls::-webkit-scrollbar-track {
+			background: rgba(0,0,0,0.2);
+		}
+
+		/* Fix pour l'affichage du synopsis */
+		.synopsis {
+			max-height: 120px; /* Évite que le synopsis ne pousse tout le contenu */
+			overflow-y: auto;
+			scrollbar-width: thin;
+			scrollbar-color: var(--cyber-blue) transparent;
+		}
+		
+        .duration-select {
+            background: #111;
+            border: 1px solid var(--cyber-blue);
+            color: var(--cyber-blue);
+            padding: 6px;
+            font-size: 0.7rem;
+        }
+
+        /* --- GRILLES --- */
+        .section-title {
+            padding: 10px 40px;
+            color: var(--cyber-blue);
+            text-transform: uppercase;
+            border-left: 4px solid var(--cyber-blue);
+            margin: 20px 0;
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 20px;
+            padding: 0 40px 40px 40px;
+        }
+
+        .movie-card {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid #222;
+            aspect-ratio: 2/3;
+            transition: 0.3s;
+        }
+
+        .movie-card:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--cyber-blue); border-color: var(--cyber-blue); z-index: 10; }
+        .movie-card img { width: 100%; height: 100%; object-fit: cover; }
+
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); opacity: 0; transition: 0.3s;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 15px; box-sizing: border-box; font-size: 0.8rem;
+        }
+
+        .movie-card:hover .overlay { opacity: 1; }
+
+        .heart-btn {
+            position: absolute; top: 10px; right: 10px;
+            font-size: 1.5rem; color: rgba(255,255,255,0.2);
+            z-index: 20; cursor: pointer;
+        }
+        .heart-btn.active { color: var(--cyber-red); filter: drop-shadow(0 0 5px var(--cyber-red)); opacity: 1; }
+
+        #logs {
+        position: fixed;
+        top: 20px;
+		left: 200px;
+        background: rgba(0, 20, 0, 0.8);
+        border-left: 3px solid var(--cyber-green);
+        padding: 5px 15px;
+        font-family: monospace;
+        font-size: 0.65rem;
+        color: var(--cyber-green);
+        text-shadow: 0 0 5px var(--cyber-green);
+        z-index: 3000;
+        pointer-events: none;
+    }
+	
+	/* =============================================
+   CONFIGURATION RESPONSIVE LUCY_OS (FINALE)
+   ============================================= */
+
+@media (max-width: 1024px) {
+    body { padding-top: 150px; }
+    .media-grid { padding: 0 20px 20px 20px; gap: 15px; }
+}
+
+@media (max-width: 768px) {
+    :root { 
+        --card-min-width: 135px; 
+    }
+
+    body { 
+        padding-top: 195px; /* Espace pour le header stacké */
+        font-size: 14px; 
+    }
+
+    /* --- HEADER STRUCTURE --- */
+    header {
+        padding: 8px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+		.header-top {
+			display: flex;
+			justify-content: space-between;  
+			align-items: center;
+		}
+		.header-tools-right { /* Crée une div qui englobe lang, profile et api */
+			display: flex;
+			gap: 15px;
+			align-items: center;
+		}
+    .system-status { 
+        grid-column: span 2; 
+        font-size: 0.65rem; 
+        border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+        padding-bottom: 4px;
+    }
+
+    .lang-select { 
+        grid-column: span 2; 
+        display: flex; 
+        gap: 4px;
+        overflow-x: auto;
+    }
+    
+    .lang-select button { 
+        flex: 1; 
+        padding: 5px 2px; 
+        font-size: 0.6rem; 
+        min-width: 40px;
+    }
+
+    .profile-manager { 
+        grid-column: span 1; 
+        padding: 4px; 
+        height: 30px;
+    }
+    
+    #profile-select { font-size: 0.6rem; width: 100%; }
+
+    .api-zone { 
+        grid-column: span 1; 
+        display: flex; 
+        gap: 4px; 
+        justify-content: flex-end;
+    }
+    
+		.api-zone button {
+		text-transform: uppercase;
+		letter-spacing: 1px;
+		transition: all 0.2s;
+	}
+
+	.api-zone button:hover {
+		background: rgba(0, 240, 255, 0.1);
+		box-shadow: 0 0 8px var(--cyber-blue);
+	}
+
+	.api-zone button[onclick="terminateSession()"]:hover {
+		background: rgba(255, 0, 60, 0.1);
+		box-shadow: 0 0 8px var(--cyber-red);
+	}
+
+    #api-key { width: 70px; font-size: 0.65rem; padding: 4px; }
+
+    /* --- BARRE DE CONTROLES (SCROLLABLE) --- */
+    .controls {
+        display: flex;
+        flex-wrap: nowrap; /* Force la ligne unique */
+        overflow-x: auto;
+        padding: 8px 0;
+        gap: 8px;
+        position: relative;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Cache la scrollbar sur Firefox */
+    }
+
+    .controls::-webkit-scrollbar { display: none; } /* Cache la scrollbar sur Chrome/Safari */
+
+    .filter-btn, .duration-select {
+        flex: 0 0 auto; /* Empêche de rétrécir */
+        white-space: nowrap;
+        font-size: 0.65rem;
+        padding: 6px 10px;
+    }
+
+    /* --- FIX BOUTON REFRESH (STICKY) --- */
+    .refresh-btn {
+        position: sticky;
+        right: 0;
+        z-index: 10;
+        flex: 0 0 auto;
+        background: var(--bg-dark) !important; /* Fond opaque pour ne pas voir les filtres passer dessous */
+        border: 1px solid var(--cyber-green) !important;
+        box-shadow: -15px 0 15px var(--bg-dark); /* Ombre pour l'effet de profondeur */
+        padding: 6px 12px;
+        font-weight: bold;
+    }
+
+    /* --- BARRE DE RECHERCHE MOBILE --- */
+    #main-search {
+        flex: none;
+        width: 100%;
+        margin-top: 5px;
+        font-size: 0.8rem;
+        border-style: double; /* Petit look différent pour le scan */
+    }
+
+    /* --- GRID & CARDS --- */
+    .media-grid {
+        grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width), 1fr));
+        padding: 10px;
+        gap: 12px;
+    }
+
+    .overlay {
+        opacity: 1; /* Toujours visible sur mobile */
+        background: linear-gradient(to top, rgba(0,0,0,0.95) 20%, transparent 60%);
+        justify-content: flex-end;
+        padding: 10px;
+    }
+
+    .overlay .synopsis { display: none; } /* Trop d'infos tue l'info sur mobile */
+    
+    .title-text { 
+        font-size: 0.75rem; 
+        line-height: 1.1; 
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .tmdb-rating {
+        font-size: 0.6rem;
+        padding: 1px 4px;
+        top: 5px; /* Remonte un peu pour laisser de la place */
+        bottom: auto;
+    }
+
+    .section-title { 
+        margin: 15px 0 10px 0; 
+        font-size: 0.85rem; 
+        padding: 6px 15px; 
+    }
+
+    #logs { display: none; } /* Trop encombrant sur petit écran */
+}
+
+/* Optimisation pour les écrans ultra-étroits */
+@media (max-width: 400px) {
+    :root { --card-min-width: 110px; }
+    body { padding-top: 215px; }
+    .header-top { grid-template-columns: 1fr; }
+    .api-zone { justify-content: flex-start; }
+}
+	.api-label {
+    font-family: monospace;
+    font-size: 0.65rem;
+    color: var(--cyber-blue);
+    margin-right: 8px;
+    letter-spacing: 1px;
+}
+
+
+/* =============================================
+   ALIGNEMENT DROITE (LANG + PROFIL + API)
+   ============================================= */
+
+.header-top {
+    display: flex !important;
+    justify-content: space-between !important; /* Status à gauche, le reste à droite */
+    align-items: center !important;
+    gap: 20px;
+}
+
+/* On crée un groupe invisible pour tout ce qui doit être à droite */
+/* Comme tu ne veux pas changer le HTML, on cible les éléments directement */
+
+.lang-select {
+    margin-left: auto !important; /* C'est la clé : pousse les langues ET tout ce qui suit vers la droite */
+}
+
+.lang-select, 
+.profile-manager, 
+.api-zone {
+    position: static !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-right: 0 !important;
+}
+
+/* Ajustement de l'API Zone pour qu'elle colle au profil */
+.api-zone {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 10px !important;
+}
+
+/* Nettoyage des marges internes du Save/Load */
+.save-controls {
+    margin-right: 0 !important;
+    gap: 5px !important;
+}
+
+					/*OVERLAY PROVIDERS */
+.providers-section {
+    margin-top: auto;  
+    padding-top: 5px;
+}
+
+.provider-label {
+    font-size: 0.7rem;
+    color: #00f3ff;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.provider-container {
+    display: flex;
+    flex-wrap: wrap;
+    min-height: 25px;
+}
+.provider-container a:hover img {
+    border-color: #00f3ff !important;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.8);
+    transform: scale(1.1);
+    transition: 0.2s;
+}
+.provider-logo {
+    width: 35px;
+    height: 35px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 243, 255, 0.5);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.provider-logo:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 8px #00f3ff;
+    cursor: help;
+}
+
+.loading-text, .no-provider {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+#provider-list {
+    min-height: 40px; /* Réserve l'espace pour une ligne de logos */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.cyber-select {
+    background: rgba(0, 0, 0, 0.8);
+    color: #00f3ff;
+    border: 1px solid #00f3ff;
+    padding: 5px 10px;
+    font-family: 'Courier New', Courier, monospace; /* Ou ta police système */
+    font-size: 0.8rem;
+    cursor: pointer;
+    outline: none;
+    text-transform: uppercase;
+    box-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+}
+
+.cyber-select:focus {
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+
+.cyber-select optgroup {
+    background: #111;
+    color: #ff0055; /* Couleur contrastée pour les titres de groupes */
+    font-style: normal;
+}
+
+.cyber-select option {
+    background: #000;
+    color: #00f3ff;
+}
+
+.lang-label {
+    font-size: 0.7rem;
+    color: rgba(0, 243, 255, 0.6);
+    margin-right: 8px;
+    letter-spacing: 1px;
+}
+
+.search-wrapper {
+    position: relative;
+    width: 100%; 
+    max-width: 330px; /* À ajuster selon ta mise en page */
+    margin: 0 auto;
+}
+
+#main-search {
+    width: 90%;
+    padding-right: 35px; /* Important : laisse de la place pour la croix */
+    /* Garde tes styles actuels (bordures, couleurs, etc.) */
+}
+
+#clear-search {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ff0055; /* Rouge Néon */
+    font-size: 15px;
+    cursor: pointer;
+    display: none; /* Caché au départ */
+    text-shadow: 0 0 8px #ff0055;
+    user-select: none;
+    z-index: 10;
+}
+
+#clear-search:hover {
+    color: #fff;
+    filter: brightness(1.5);
+}
+
+
+.bmc-container {
+    margin: 0px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.bmc-cyber-btn {
+    position: relative;
+    background: transparent;
+    border: 1px solid #ffdd00; /* La couleur jaune de ton Bubble Tea original */
+    color: #ffdd00;
+    padding: 3px 0px;
+    text-decoration: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 0 5px rgba(255, 221, 0, 0.2);
+}
+
+.bmc-cyber-btn:hover {
+    background: #ffdd00;
+    color: #000;
+    box-shadow: 0 0 20px rgba(255, 221, 0, 0.6);
+    transform: translateY(-2px);
+}
+
+.bmc-icon {
+    font-size: 1.2rem;
+}
+
+/* Petit effet de scan line au survol */
+.bmc-cyber-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 221, 0, 0.4),
+        transparent
+    );
+    transition: 0.5s;
+}
+
+.bmc-cyber-btn:hover::before {
+    left: 100%;
+}
+
+#modal-input:focus {
+    box-shadow: 0 0 10px var(--cyber-blue);
+    border-color: #fff;
+}
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-top">
+        <div class="system-status" id="node-status">LUCY_OS // Node: Offline</div>
+			<div class="lang-select-container">
+				<label for="lang-dropdown" class="lang-label">NETWORK_REGION:</label>
+				<select id="lang-dropdown" onchange="setLang(this.value)" class="cyber-select">
+					<optgroup label="EUROPE">
+						<option value="fr" selected>🇫🇷 FR - Français</option>
+						<option value="en">🇺🇸 EN - English (US)</option>
+						<option value="es-ES">🇪🇸 ES - Español</option>
+						<option value="de">🇩🇪 DE - Deutsch</option>
+						<option value="it">🇮🇹 IT - Italiano</option>
+						<option value="pt-PT">🇵🇹 PT - Português</option>
+						<option value="ru">🇷🇺 RU - Pусский</option>
+					</optgroup>
+					<optgroup label="ASIA">
+						<option value="ja-JP">🇯🇵 JP - 日本語</option>
+						<option value="zh-CN">🇨🇳 CN - 简体中文</option>
+						<option value="ko-KR">🇰🇷 KR - 한국어</option>
+						<option value="th">🇹🇭 TH - ไทย (Thai)</option>
+						<option value="hi-IN">🇮🇳 IN - हिन्दी</option>
+						<option value="vi-VN">🇻🇳 VN - Tiếng Việt</option>
+					</optgroup>
+					<optgroup label="OTHER">
+						<option value="ar-SA">🌐 SA - العربية (SA)</option>
+						<option value="ar-EG">🇪🇬 EG - العربية (EG)</option>
+						<option value="tr">🇹🇷 TR - Türkçe</option>
+						<option value="pt-BR">🇧🇷 BR - Português (BR)</option>
+					</optgroup>
+				</select>
+			</div>
+			<div class="profile-manager">
+		<select id="profile-select" onchange="switchProfile(this.value)">
+			<option value="Default">Profil Principal</option>
+		</select>
+		<button onclick="addNewProfile()" title="Nouveau profil">+</button>
+		<button onclick="deleteCurrentProfile()" title="Supprimer" style="color: var(--cyber-red)">×</button>
+	</div>
+	
+	<div class="api-zone">
+		<div class="save-controls" style="display: flex; gap: 5px; margin-right: 10px;">
+			<button onclick="exportProfiles()" title="Backup (Export JSON)" style="background:none; border:1px solid var(--cyber-blue); color:var(--cyber-blue); cursor:pointer; padding:2px 8px; font-size:12px;">💾 SAVE</button>
+			<button onclick="importProfiles()" title="Restore (Import JSON)" style="background:none; border:1px solid var(--cyber-blue); color:var(--cyber-blue); cursor:pointer; padding:2px 8px; font-size:12px;">📂 LOAD</button>
+		</div>
+
+		<input type="password" id="api-key" placeholder="SCAN_KEY" oninput="checkApiStatus()" 
+			   style="background:#000; border:1px solid #333; color:var(--cyber-blue); padding:5px; width:80px; font-size:10px;">
+		<!--
+		<button onclick="terminateSession()" 
+				style="color:var(--cyber-red); border:1px solid var(--cyber-red); padding:5px 10px; cursor:pointer; background:none; font-size:10px; font-weight:bold;">
+			TERMINATE
+		</button> -->
+		<span class="api-label">API_KEY</span>
+		
+	</div>
+
+    </div>
+
+    <div class="controls">
+	
+	<!--
+							DEBUG BUTTON
+	<button id="debug-btn" onclick="toggleDebug()" style="border-color:var(--cyber-red); color:var(--cyber-red);">DEBUG: OFF</button> 
+	-->
+		<div class="bmc-container">
+    <a href="https://www.buymeacoffee.com/miw4n" target="_blank" class="bmc-cyber-btn">
+        <span class="bmc-icon">🧋</span>
+        <span class="bmc-text">Support the system</span>
+        <span class="bmc-glitch-layer"></span>
+    </a>
+</div>
+
+		<div class="search-wrapper">
+			<input type="text" id="main-search" placeholder="DEEP SCAN..." oninput="debounceSearch()">
+			<span id="clear-search" onclick="clearSearch()">CLEAR</span>
+		</div>       
+		<button class="filter-btn active" onclick="filterType('all', this)">ALL</button>
+        <button class="filter-btn" onclick="filterType('movie', this)">MOVIES</button>
+        <button class="filter-btn" onclick="filterType('tv_anime', this)">TV SHOW / ANIME</button>
+        
+        <select class="duration-select" id="era-filter" onchange="applyGlobalFilters()">
+            <option value="all">PERIOD: ANY</option>
+            <option value="retro">RÉTRO (-2000)</option>
+            <option value="modern">MODERN (2000-2020)</option>
+            <option value="new">RECENT (2020+)</option>
+        </select>
+
+        <select class="duration-select" id="duration-filter" onchange="applyGlobalFilters()">
+            <option value="0">DURATION: ALL</option>
+            <option value="30">- 30M</option>
+            <option value="60">- 1H</option>
+            <option value="120">- 2H</option>
+            <option value="121">+ 2H</option>
+        </select>
+
+	<select class="duration-select" id="tag-filter" onchange="applyGlobalFilters()">
+		<option value="all">TYPE : ALL</option>
+		<option value="Action,Combat,Explosion,Course,Action & Aventure">ACTION</option>
+		<option value="Aventure,Epopée,Expédition">ADVENTURE</option>
+		<option value="Animation,Dessin animé,Anime">ANIMATION</option>
+		<option value="Comédie,Humour,Comique">COMEDY</option>
+		<option value="Crime,Policier,Meurtre,Mafia,Gangster,Justice">CRIME / POLICE</option>
+		<option value="Cyberpunk,Dystopie,Futuriste,Hackers,Cyborg">CYBERPUNK</option>
+		<option value="Documentaire">DOCS</option>
+		<option value="Drame,Tragédie,Désespoir">DRAMA</option>
+		<option value="Famille">FAMILY</option>
+		<option value="Fantastique,Magie,Mythologie,Surnaturel,Fantôme">FANTASTIC / MAGIE</option>
+		<option value="Histoire">HISTORY</option>
+		<option value="Horreur,Épouvante,Zombie">HORROR</option>
+		<option value="Kids">KIDS</option>
+		<option value="Musique,Concert">MUSIC</option>
+		<option value="Mystère">MYSTERY</option>
+		<option value="Politique, War & Politics">POLICY</option>
+		<option value="Reality">REALITY</option>
+		<option value="Romance,Amour,Romantique,Mariage">ROMANCE</option>
+		<option value="Science Fiction,Science-Fiction & Fantastique,Futur,Robot,Espace,Dystopie,Alien,Technologie,Science-Fiction">SCI-FI</option>
+		<option value="Soap">SOAP</option>
+		<option value="Thriller,Suspense">THRILLER</option>
+		<option value="Guerre,Militaire,Armée">WAR</option>
+		<option value="Western,Cowboy,Far West">WESTERN</option>
+	</select>
+
+        <button class="refresh-btn" onclick="shuffleDatabase()" style="border-color:var(--cyber-green); color:var(--cyber-green);">⟳ REFRESH</button>
+    </div>
+</header>
+
+<div id="reco-section" style="display:none;">
+    <div class="section-title">Neural Recommendations</div>
+    <div class="media-grid" id="reco-grid"></div>
+</div>
+
+<div class="section-title">Global Datalake</div>
+<div class="media-grid" id="main-grid"></div>
+
+<div id="logs">> System Init...</div>
+
+
+
+<script src="database.js"></script>
+
+<script>
+
+let favorites = JSON.parse(localStorage.getItem('netrunner_favs')) || [];
+let currentLang = 'fr';
+let currentType = 'all';
+let filteredCatalog = [];
+let isSearching = false; 
+let isDebugMode = false;
+let searchTimeout;
+let currentProfile = (() => {
+    const saved = localStorage.getItem('lucy_current_profile');
+    const profiles = JSON.parse(localStorage.getItem('lucy_profiles')) || {};
+    return saved && profiles[saved] ? saved : "Default";
+})();
+let allProfiles = JSON.parse(localStorage.getItem('lucy_profiles')) || { "Default": { "favs": [], "ratings": {} } };
+
+function clearSearch() {
+    const input = document.getElementById('main-search');
+    const clearBtn = document.getElementById('clear-search');
+    
+    input.value = ''; // Vide le texte
+    clearBtn.style.display = 'none'; // Cache la croix
+    input.focus(); // Remet le curseur dans la barre
+    
+    // Relance la recherche pour afficher tous les films
+    debounceSearch(); 
+}
+
+async function updateWatchProviders(tmdbId, type) {
+    const container = document.getElementById(`providers-${tmdbId}`);
+    if (!container) return;
+
+    // Éviter le double chargement
+		if (container.querySelector('.provider-logo') || 
+		container.innerText.includes('N/A') ||
+				container.innerText.includes('INDISPONIBLE')) {
+        return;
+    }
+    container.innerHTML = "<span class='loading-text' style='font-size:0.6rem; color:#00f3ff; letter-spacing:1px;'>SCANNING...</span>";
+
+    // 1. Mapping propre des pays
+    const langToCountry = {
+	// --- Europe ---
+    'fr': 'FR',      // France
+    'en': 'US',      // USA (Généralement plus complet que GB pour l'anglais)
+    'es-ES': 'ES',   // Espagne
+    'de': 'DE',      // Allemagne
+    'it': 'IT',      // Italie
+    'pt-PT': 'PT',   // Portugal
+    'ru': 'RU',      // Russie
+
+    // --- Asie ---
+    'ja-JP': 'JP',   // Japon
+    'zh-CN': 'CN',   // Chine (Mainland)
+    'ko-KR': 'KR',   // Corée du Sud
+    'hi-IN': 'IN',   // Inde
+	'th': 'TH',		 // Thailande
+
+    // --- Moyen-Orient & Autres ---
+    'ar-SA': 'SA',   // Arabie Saoudite
+    'ar-EG': 'EG',   // Égypte
+    'tr': 'TR',      // Turquie
+    'pt-BR': 'BR',   // Brésil
+    'vi-VN': 'VN'    // Vietnam
+    };
+    
+    // On récupère la langue actuelle (s'assure que currentLang existe)
+    const activeLang = typeof currentLang !== 'undefined' ? currentLang : 'fr';
+    const countryCode = langToCountry[activeLang] || 'FR';
+
+    // 2. Correction de l'endpoint : TMDB ne connaît que 'movie' ou 'tv'
+    // Si ton type est 'anime' ou 'tv', on teste 'tv', sinon 'movie'
+    const endpoint = (type === 'movie') ? 'movie' : 'tv';
+
+    // 3. Récupération de la clé API depuis l'input (plus sûr)
+    const key = document.getElementById('api-key').value;
+
+    const url = `https://api.themoviedb.org/3/${endpoint}/${tmdbId}/watch/providers?api_key=${key}`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Network error');
+        
+        const data = await response.json();
+        const regionData = data.results ? data.results[countryCode] : null;
+
+        container.innerHTML = ""; // On efface le "SCANNING"
+
+        if (!regionData || (!regionData.flatrate && !regionData.free)) {
+            container.innerHTML = `<span style='font-size:0.6rem; opacity:0.7; text-transform:uppercase;'>----N/A---- (${countryCode})</span>`;
+            return;
+        }
+
+        const providers = [...(regionData.flatrate || []), ...(regionData.free || [])];
+
+		providers.slice(0, 4).forEach(p => {
+            // 1. Création du lien (Anchor)
+            const link = document.createElement('a');
+            
+            // On crée un lien de recherche ciblé (ex: "Netflix Inception")
+            // 'm.t' correspond au titre du film dans ton objet currentMovieOpen
+            const searchTitle = currentMovieOpen ? currentMovieOpen.t : "";
+            link.href = `https://www.google.com/search?q=${encodeURIComponent(p.provider_name + ' ' + searchTitle)}`;
+            link.target = "_blank"; // Ouvre dans un nouvel onglet
+            link.style.textDecoration = "none";
+
+            // 2. Création de l'image
+            const img = document.createElement('img');
+            img.src = `https://image.tmdb.org/t/p/w92${p.logo_path}`;
+            img.className = 'provider-logo';
+            img.title = `Regarder sur ${p.provider_name}`;
+            
+            // Style
+            img.style.width = "24px";
+            img.style.height = "24px";
+            img.style.marginRight = "4px";
+            img.style.border = "1px solid rgba(0, 243, 255, 0.5)";
+            img.style.borderRadius = "2px";
+            img.style.cursor = "pointer";
+
+            // 3. Assemblage : Image dans le Lien, Lien dans le Conteneur
+            link.appendChild(img);
+            container.appendChild(link);
+        });
+    } catch (e) {
+        console.error("Watch Providers Error:", e);
+        container.innerHTML = "<span style='font-size:0.5rem; color:#ff0055;'>SCAN ERROR</span>";
+    }
+}
+
+// --- EXPORT DES PROFILS (Télécharge un fichier JSON) ---
+function exportProfiles() {
+    try {
+        // 1. On prépare les données (vérifie que tes variables globales ont bien ces noms)
+        const backupData = {
+            profiles: allProfiles, // Ta variable contenant tous les profils
+            timestamp: new Date().toLocaleString(),
+            os_version: "LUCY_OS_V2"
+        };
+
+        // 2. Conversion en String JSON
+        const dataStr = JSON.stringify(backupData, null, 2);
+        
+        // 3. Création du Blob (plus fiable que le dataUri pour les gros fichiers)
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        // 4. Création du lien de téléchargement
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", url);
+        downloadAnchorNode.setAttribute("download", "lucy_os_backup.json");
+        
+        // --- CRUCIAL : On l'ajoute au DOM avant de cliquer ---
+        document.body.appendChild(downloadAnchorNode); 
+        
+        downloadAnchorNode.click();
+        
+        // 5. Nettoyage
+        document.body.removeChild(downloadAnchorNode);
+        URL.revokeObjectURL(url);
+        
+        log("SYSTEM: BACKUP_SUCCESS_CREATED");
+    } catch (err) {
+        console.error(err);
+        log("SYSTEM: BACKUP_FAILED");
+    }
+}
+
+// --- IMPORT DES PROFILS (Lit un fichier JSON) ---
+function importProfiles() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.readAsText(file, 'UTF-8');
+        
+        reader.onload = readerEvent => {
+            try {
+                const content = JSON.parse(readerEvent.target.result);
+                if (content.profiles) {
+                    allProfiles = content.profiles;
+                    localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
+                    log("SYSTEM: PROFILES_IMPORTED_REBOOTING...");
+                    setTimeout(() => location.reload(), 1000);
+                }
+            } catch (err) {
+                log("ERROR: CORRUPTED_DATA_STREAM");
+                alert("Fichier corrompu ou invalide.");
+            }
+        }
+    }
+    input.click();
+}
+
+// --- TERMINATE (Version Soft / Logout) ---
+function terminateSession() {
+    if(confirm("TERMINATE: Déconnecter le profil actuel et purger la session ? (Vos profils sauvegardés ne seront pas supprimés)")) {
+        localStorage.removeItem('lucy_current_profile');
+        // On ne supprime PAS 'lucy_profiles' ni 'tmdb_api_key'
+        log("SYSTEM: SESSION_TERMINATED");
+        location.reload();
+    }
+}
+
+
+// --- GESTION DES PROFILS ---
+
+function initProfiles() {
+    const select = document.getElementById('profile-select');
+    if (!select) return;
+
+    // Reconstruction des options
+    select.innerHTML = Object.keys(allProfiles).map(name =>
+        `<option value="${name}">${name}</option>`
+    ).join('');
+
+    // FORÇAGE de cohérence UI ↔ état
+    select.value = currentProfile;
+
+    // Chargement réel des données du profil actif
+    loadProfileData();
+}
+
+
+function switchProfile(name) {
+    log(`SWITCHING TO PROFILE: ${name}`);
+    currentProfile = name;
+    localStorage.setItem('lucy_current_profile', name); 
+    loadProfileData();
+    applyGlobalFilters();
+		shuffleDatabase();
+		log(`LUCY_OS // SESSION: ${name.toUpperCase()}`);
+}
+
+
+function loadProfileData() {
+    // Si le profil n'existe pas (sécurité), on prend le Default
+    const data = allProfiles[currentProfile] || allProfiles["Default"];
+    favorites = data.favs || [];
+    userRatings = data.ratings || {};
+}
+
+function saveToProfile() {
+    allProfiles[currentProfile] = { "favs": favorites, "ratings": userRatings };
+    localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
+}
+
+async function addNewProfile() {
+    // On appelle notre nouveau modal stylé
+    const name = await showCyberModal("NEW_PROFILE_ID_REQUIRED:", true);
+    
+    // Si l'utilisateur a cliqué sur Cancel ou n'a rien tapé
+    if (!name) return;
+
+    if (allProfiles[name]) {
+        await showCyberModal("ERROR: PROFILE_ALREADY_EXISTS"); // Un petit avertissement stylé
+        return;
+    }
+
+    // Création du profil
+    allProfiles[name] = { favs: [], ratings: {} };
+    localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
+
+    currentProfile = name;
+    localStorage.setItem('lucy_current_profile', name);
+
+    initProfiles();
+    loadProfileData();
+    applyGlobalFilters();
+    
+    log(`LUCY_OS // SESSION_ESTABLISHED: ${name.toUpperCase()}`);
+}
+
+
+// Fonction universelle pour remplacer confirm()
+function cyberConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('cyber-modal');
+        const msg = document.getElementById('modal-message');
+        const btnYes = document.getElementById('modal-confirm');
+        const btnNo = document.getElementById('modal-cancel');
+
+        msg.innerText = message;
+        modal.style.display = 'flex';
+
+        function cleanup(result) {
+            modal.style.display = 'none';
+            btnYes.onclick = null;
+            btnNo.onclick = null;
+            resolve(result);
+        }
+
+        btnYes.onclick = () => cleanup(true);
+        btnNo.onclick = () => cleanup(false);
+    });
+}
+
+async function deleteCurrentProfile() {
+    // Note : on passe 'false' car on ne veut PAS l'input text ici
+    if (currentProfile === "Default") {
+        const ok = await showCyberModal("WIPE DATA: Effacer les données du profil racine ?", false);
+        if (ok) {
+            allProfiles["Default"] = { favorites: [], ratings: {}, lastSeen: new Date().toISOString() };
+            localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
+            log("SYSTEM: DEFAULT_WIPED");
+            switchProfile("Default");
+        }
+        return;
+    }
+
+    const ok = await showCyberModal(`TERMINATE PROFILE: ${currentProfile} ?`, false);
+    if (ok) {
+        delete allProfiles[currentProfile];
+        localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
+        currentProfile = "Default";
+        initProfiles();
+        switchProfile("Default");
+        log(`SYSTEM: PROFILE_${currentProfile}_TERMINATED`);
+    }
+}
+
+// --- INITIALISATION ---
+function init() {
+    const savedKey = localStorage.getItem('tmdb_api_key');
+    if (savedKey) {
+        document.getElementById('api-key').value = savedKey;
+        checkApiStatus();
+    }
+
+    initProfiles();          // 1️⃣ Profil + menu synchronisés
+    shuffleDatabase();       // 2️⃣ Affichage basé sur CE profil
+
+    window.onscroll = () => {
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 800) {
+            if (!isSearching) loadMore();
+        }
+    };
+}
+
+
+function log(msg) {
+    document.getElementById('logs').innerText = `> ${msg}`;
+}
+
+// --- API TMDB ---
+function checkApiStatus() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    const statusEl = document.getElementById('node-status');
+    if (!apiKey) return;
+
+    fetch(`https://api.themoviedb.org/3/configuration?api_key=${apiKey}`)
+        .then(res => {
+            if(res.ok) {
+                statusEl.innerText="LUCY_OS // Node: Online"; 
+                statusEl.style.color="var(--cyber-green)";
+                localStorage.setItem('tmdb_api_key', apiKey);
+                applyGlobalFilters();
+            } else {
+                statusEl.innerText="LUCY_OS // Access Denied"; 
+                statusEl.style.color="var(--cyber-red)";
+            }
+        }).catch(() => { statusEl.innerText="LUCY_OS // Offline"; });
+}
+
+// --- SHUFFLE & SEARCH (TES FIXES) ---
+function shuffleDatabase() {
+    log("SHUFFLING DATABASE...");
+    document.getElementById('main-search').value = ""; // Vide le champ
+    isSearching = false; 
+    catalog.sort(() => 0.5 - Math.random());
+    applyGlobalFilters();
+}
+
+
+function debounceSearch() {
+const input = document.getElementById('main-search');
+    const clearBtn = document.getElementById('clear-search');
+	clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
+    // 1. On annule le scan précédent si on tape vite
+    clearTimeout(searchTimeout);
+    
+    // 2. On attend 300ms après la dernière touche pressée
+    searchTimeout = setTimeout(() => {
+        const query = document.getElementById('main-search').value.trim();
+        
+        // 3. SEUIL : On ne cherche que si 2 lettres ou plus, 
+        // ou si le champ est vidé (pour réinitialiser l'affichage)
+        if (query.length >= 2 || query.length === 0) {
+            search();
+        }
+    }, 300);
+}
+
+function search() {
+    // La recherche appelle maintenant simplement applyGlobalFilters pour maintenir la cohérence
+    applyGlobalFilters();
+}
+
+function applyGlobalFilters() {
+    const era = document.getElementById('era-filter').value;
+    const durLimit = parseInt(document.getElementById('duration-filter').value);
+    const tagChoice = document.getElementById('tag-filter').value;
+    const query = document.getElementById('main-search').value.toLowerCase().trim();
+
+    // 1. Filtrage multicritères
+    filteredCatalog = catalog.filter(m => {
+        // --- LOGIQUE TYPE MODIFIÉE ---
+        // 'all'      : tout passe
+        // 'movie'    : seulement si m.type est strictement 'movie'
+        // 'tv_anime' : tout ce qui n'est PAS 'movie'
+        let tMatch = (currentType === 'all') || 
+                     (currentType === 'movie' && m.type === 'movie') || 
+                     (currentType === 'tv_anime' && m.type !== 'movie');
+        
+        // Époque
+        let y = parseInt(m.y);
+        let eMatch = (era === 'all') || (era === 'retro' && y < 2000) || (era === 'modern' && y >= 2000 && y < 2020) || (era === 'new' && y >= 2020);
+        
+        // Durée
+        let dMatch = (durLimit === 0) || (durLimit === 121 ? m.d >= 120 : (m.d > 0 && m.d <= durLimit));
+        
+        // --- LOGIQUE TAGS (Version Mot Exact) ---
+        let tagMatch = false;
+        if (tagChoice === 'all') {
+            tagMatch = true;
+        } else if (m.m) {
+            const chosenKeywords = tagChoice.toLowerCase().split(',');
+            const movieTagsArray = m.m.toLowerCase().split(',').map(t => t.trim());
+            tagMatch = chosenKeywords.some(word => movieTagsArray.includes(word.trim()));
+        }
+
+        return tMatch && eMatch && dMatch && tagMatch;
+    });
+
+    // 2. Logique d'affichage
+    const grid = document.getElementById('main-grid');
+    grid.innerHTML = ""; 
+
+    // --- LOGIQUE DE RECHERCHE (FR + VO) ---
+    if (query !== "") {
+        const searchKeywords = query.split(/\s+/);
+        const searchResults = filteredCatalog.filter(m => {
+            const titleFR = m.t ? m.t.toLowerCase() : "";
+            const titleEN = m.ot ? m.ot.toLowerCase() : "";
+            
+            return searchKeywords.every(word => 
+                titleFR.includes(word) || titleEN.includes(word)
+            );
+        });
+        
+        renderGridChunk(searchResults, 'main-grid');
+    } else {
+        updateRecommendations();
+        loadMore(); 
+    }
+}
+
+
+
+function loadMore() {
+    const grid = document.getElementById('main-grid');
+    const start = grid.children.length;
+    const chunk = filteredCatalog.slice(start, start + 30);
+    if (chunk.length > 0) renderGridChunk(chunk, 'main-grid');
+}
+
+// --- AFFICHAGE & DEBUG ---
+function toggleDebug() {
+    isDebugMode = !isDebugMode;
+    const btn = document.getElementById('debug-btn');
+    if (isDebugMode) {
+        document.body.classList.add('debug-mode');
+        btn.innerText = "DEBUG: ON";
+        btn.style.background = "var(--cyber-red)";
+        btn.style.color = "black";
+    } else {
+        document.body.classList.remove('debug-mode');
+        btn.innerText = "DEBUG: OFF";
+        btn.style.background = "transparent";
+        btn.style.color = "var(--cyber-red)";
+    }
+}
+// --- RENDU DES VIGNETTES ---
+function renderGridChunk(data, gridId) {
+    const grid = document.getElementById(gridId);
+    
+    const html = data.map(m => {
+        // Préparation du score (on arrondit à 1 décimale)
+        const rating = m.r ? parseFloat(m.r).toFixed(1) : "??";
+        
+        return `
+            <div class="movie-card" data-id="${m.i}" data-type="${m.type}">
+                <div class="tmdb-rating">${rating}</div>
+                
+                <div class="heart-btn ${favorites.includes(m.i) ? 'active' : ''}" onclick="toggleLike(event, ${m.i})">❤</div>
+                
+                <div class="debug-info">
+                    ID: ${m.i} | DUR: ${m.d}min<br>
+                    TAGS: ${m.m ? m.m.substring(0, 30) : 'none'}...
+                </div>
+
+                <img src="https://image.tmdb.org/t/p/w300${m.p}" loading="lazy">
+                
+                <div class="overlay" onmouseover="handleHover(this, ${m.i}, '${m.type}')">
+                    <strong class="title-text">${m.t}</strong> <small>(${m.y})</small>
+                    <div class="synopsis" style="font-size:0.7rem; margin-top:5px;">Scan en cours...</div>
+				<div class="providers-section">
+						<p class="provider-label">DISPONIBILITÉ :</p>
+						<div id="providers-${m.i}" class="provider-container"></div>
+					</div>
+
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    grid.insertAdjacentHTML('beforeend', html);
+    
+    // TRADUCTION : On lance la traduction sur les nouveaux éléments si la langue n'est pas FR
+    if(currentLang !== 'fr') {
+        translateVisibleTitles(grid);
+    }
+}
+
+// --- TRADUCTION API ---
+async function translateVisibleTitles(container) {
+    const apiKey = document.getElementById('api-key').value;
+    if (!apiKey) return;
+
+    // On cible uniquement les cartes qui n'ont pas encore été traduites pour cette langue
+    const cards = container.querySelectorAll(`.movie-card:not([data-tr="${currentLang}"])`);
+    
+    cards.forEach(async (card) => {
+        const type = (card.dataset.type === 'tv' || card.dataset.type === 'anime') ? 'tv' : 'movie';
+        const titleEl = card.querySelector('.title-text');
+        
+        try {
+            const res = await fetch(`https://api.themoviedb.org/3/${type}/${card.dataset.id}?api_key=${apiKey}&language=${currentLang}`);
+            const d = await res.json();
+            if (d.title || d.name) {
+                titleEl.innerText = d.title || d.name;
+                card.setAttribute('data-tr', currentLang);
+            }
+        } catch (e) {
+            console.error("Translation Error", e);
+        }
+    });
+}
+
+// --- INTERACTIONS ---
+function toggleLike(e, id) {
+    e.stopPropagation();
+    if (favorites.includes(id)) {
+        favorites = favorites.filter(f => f !== id);
+    } else {
+        favorites.push(id);
+    }
+    localStorage.setItem('netrunner_favs', JSON.stringify(favorites));
+    updateRecommendations(); 
+    
+    const heartBtns = document.querySelectorAll(`.movie-card[data-id="${id}"] .heart-btn`);
+    heartBtns.forEach(btn => btn.classList.toggle('active'));
+    log("Neural Link updated.");
+	saveToProfile();
+
+}
+
+async function fetchSynopsis(id, el, type) {
+    const key = document.getElementById('api-key').value;
+    if (!key) return;
+    const t = (type === 'tv' || type === 'anime') ? 'tv' : 'movie';
+    
+    // Effet visuel de décryptage
+    el.innerHTML = "<span style='color:var(--cyber-green)'>[DECRYPTING_DATA...]</span>";
+    
+    try {
+        const res = await fetch(`https://api.themoviedb.org/3/${t}/${id}?api_key=${key}&language=${currentLang}`);
+        const d = await res.json();
+        
+        // On simule un léger délai pour le style
+        setTimeout(() => {
+            el.innerText = d.overview || "NO_DATA_FOUND_IN_ARCHIVES.";
+        }, 300);
+        
+    } catch { 
+        el.innerText = "CRITICAL_ERROR: DATA_CORRUPTED."; 
+    }
+}
+
+function handleHover(overlay, id, type) {
+    // 1. On retrouve l'objet complet dans le catalogue pour le mémoriser
+    // On suppose que ton catalogue s'appelle 'catalog' (variable dans database.js)
+    const movie = catalog.find(m => m.i === id);
+    currentMovieOpen = movie; 
+
+    const s = overlay.querySelector('.synopsis');
+    
+    // 2. Récupération du synopsis (on utilise les arguments id et type reçus)
+    if (s.innerText === "Scan en cours...") {
+        fetchSynopsis(id, s, type);
+    }
+    
+    // 3. Mise à jour des plateformes (on utilise l'id et le type reçus)
+    updateWatchProviders(id, type);
+    
+    // 4. Affichage
+    document.getElementById('movie-overlay').classList.add('visible');
+}
+
+function setLang(lang) {
+    currentLang = lang;
+    
+    // On met à jour les filtres globaux (recherche, genres, etc.)
+    applyGlobalFilters();
+    
+    // On vide tous les scans précédents pour forcer le rafraîchissement avec le nouveau pays
+    document.querySelectorAll('.provider-container').forEach(c => c.innerHTML = '');
+    
+    // Si un overlay est actuellement ouvert, on rafraîchit ses providers immédiatement
+    if (typeof currentMovieOpen !== 'undefined' && currentMovieOpen) { 
+        updateWatchProviders(currentMovieOpen.i, currentMovieOpen.type);
+    }
+}
+
+function filterType(type, btn) {
+    currentType = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyGlobalFilters();
+}
+
+function updateRecommendations() {
+    const section = document.getElementById('reco-section');
+    if (favorites.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+
+    // 1. Liste noire des tags trop larges (on les ignore pour la reco)
+	const genreBlacklist = [
+	'action', 'aventure', 'drame', 'comédie', 'animation', 
+    'fantastique', 'science fiction', 'scifi', 'thriller', 'familial', 
+    'tout', 'docs', 'documentaire', 'histoire', 'romance', 'crime', 'famille', 'anime',
+    'amour', 'mystère', 'horreur', 'guerre', 'copine', 'vie', 'femme', 'mère', 'enfant',
+    'téléfilm', 'épopée', 'ami', 'peur', 'danger', 'réalité', 'décision',
+    'personnage', 'personage', 'suspense', 'suspence',
+    'musique', 'western', 'kids', 'news', 'reality', 'soap', 'talk',
+    'action & aventure', 'science-fiction', 'guerre', 'politique',
+    'science-fiction & fantastique', 'war & politics', 'détective', 'société'
+];
+
+    // 2. Récupération des tags des favoris (en ignorant la blacklist)
+    let userTags = [];
+    favorites.forEach(id => {
+        let m = catalog.find(x => x.i === id);
+        if (m && m.m) {
+            const tags = m.m.split(',').map(t => t.trim().toLowerCase());
+            // On ne garde que ce qui n'est PAS générique
+            const filteredTags = tags.filter(t => !genreBlacklist.includes(t));
+            userTags.push(...filteredTags);
+        }
+    });
+
+    // 3. Calcul du score pour les films du catalogue
+    const scores = filteredCatalog
+        .filter(m => !favorites.includes(m.i)) // On ne propose pas ce qui est déjà en favori
+        .map(m => {
+            const mTags = m.m ? m.m.split(',').map(t => t.trim().toLowerCase()) : [];
+            // Le score est basé uniquement sur les tags précis (ex: Cyberpunk, Voyage Temporel)
+            const matchScore = mTags.filter(t => userTags.includes(t)).length;
+            return { ...m, score: matchScore };
+        })
+        .filter(m => m.score > 0) // On ne garde que ceux qui ont au moins un point commun
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+
+    document.getElementById('reco-grid').innerHTML = "";
+    renderGridChunk(scores, 'reco-grid');
+}
+
+function resetSystem() { if(confirm("Reset website ?")) { localStorage.clear(); location.reload(); } }
+
+function showCyberModal(message, showInput = false) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('cyber-modal');
+        const msgEl = document.getElementById('modal-message');
+        const inputEl = document.getElementById('modal-input');
+        const confirmBtn = document.getElementById('modal-confirm');
+        const cancelBtn = document.getElementById('modal-cancel');
+
+        msgEl.innerText = message;
+        inputEl.style.display = showInput ? 'block' : 'none';
+        inputEl.value = "";
+        modal.style.display = 'flex';
+
+        if(showInput) setTimeout(() => inputEl.focus(), 100);
+		inputEl.onkeydown = (e) => {
+			if (e.key === "Enter") confirmBtn.click();
+		};
+        confirmBtn.onclick = () => {
+            const value = showInput ? inputEl.value.trim() : true;
+            modal.style.display = 'none';
+            resolve(value);
+        };
+
+		confirmBtn.onclick = () => {
+			// Si l'input est affiché, on renvoie sa valeur, sinon on renvoie true
+			const value = (inputEl.style.display === 'block') ? inputEl.value.trim() : true;
+			modal.style.display = 'none';
+			resolve(value);
+		};
+    });
+}
+
+window.onload = init;
+</script>
+
+<div id="cyber-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">LUCY_OS // SECURE_AUTH</div>
+        <div id="modal-message">Do you want to proceed?</div>
+        
+        <input type="text" id="modal-input" placeholder="ENTER_ID..." 
+               style="display:none; width:100%; background:#000; border:1px solid var(--cyber-blue); 
+                      color:var(--cyber-blue); padding:8px; margin-bottom:20px; outline:none; font-family:monospace;">
+        
+        <div class="modal-btns">
+            <button id="modal-confirm" class="m-btn m-yes">CONFIRM</button>
+            <button id="modal-cancel" class="m-btn m-no">CANCEL</button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
