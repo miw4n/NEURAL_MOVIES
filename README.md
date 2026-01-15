@@ -1,9 +1,5 @@
 # ⚡ LUCY_OS // NEURAL_MOVIES
 
-![UI](https://img.shields.io/badge/UI-Cyberpunk-ff0055)
-![JS](https://img.shields.io/badge/Logic-Vanilla_JS-00f3ff)
-![API](https://img.shields.io/badge/Data-TMDB_API-ffdd00)
-
 ## 🌐 OVERVIEW / PRÉSENTATION
 **LUCY_OS** est une interface de gestion de catalogue de films ultra-rapide inspirée des terminaux de science-fiction. Elle utilise un système de recommandation unique basé sur l'affinité des tags pour transformer votre bibliothèque en une expérience d'exploration personnalisée.
 
