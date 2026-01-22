@@ -680,6 +680,75 @@ body.debug-mode .debug-info {
     border-color: #fff;
 }
 
+/* Style de base pour les boutons de gestion de profil */
+.profile-manager {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+/* Bouton dans son état normal (vide) */
+.heart-toggle-btn {
+    background: rgba(255, 0, 85, 0.05) !important; /* Très léger fond rouge transparent */
+    color: var(--cyber-red) !important;
+    border: 1px solid var(--cyber-red) !important;
+    font-size: 1.1rem !important;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 40px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* État survolé (avant sélection) */
+.heart-toggle-btn:hover {
+    background: rgba(255, 0, 85, 0.2) !important;
+    box-shadow: 0 0 10px var(--cyber-red);
+}
+
+/* ÉTAT SÉLECTIONNÉ (PLEIN) */
+.heart-toggle-btn.active-heart {
+    background: var(--cyber-red) !important; /* Fond plein */
+    color: #1a1a1a !important; /* Le coeur devient sombre pour trancher */
+    border: 1px solid #ff4d88 !important; /* Bordure un peu plus claire pour le relief */
+    box-shadow: 0 0 15px var(--cyber-red), inset 0 0 10px rgba(0,0,0,0.2) !important;
+    transform: translateY(-1px); /* Petit effet de levée */
+}
+
+/* Optionnel : La petite animation de "pulsation" quand le filtre est actif */
+.heart-toggle-btn.active-heart::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--cyber-red);
+    animation: pulse-ring 1.5s infinite;
+    pointer-events: none;
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
+/* Effet d'enfoncement quand on clique (pression du doigt/souris) */
+.heart-toggle-btn:active {
+    transform: scale(0.9) !important; /* Le bouton rétrécit un peu */
+    background: rgba(255, 0, 85, 0.4) !important;
+    transition: transform 0.1s; /* Très rapide pour le retour */
+}
+
+/* Si le bouton est DÉJÀ sélectionné (plein) et qu'on rappuie dessus */
+.heart-toggle-btn.active-heart:active {
+    transform: scale(0.95) !important;
+    box-shadow: 0 0 5px var(--cyber-red) !important;
+}
+
     </style>
 </head>
 <body>
@@ -719,6 +788,9 @@ body.debug-mode .debug-info {
 		<select id="profile-select" onchange="switchProfile(this.value)">
 			<option value="Default">Profil Principal</option>
 		</select>
+		<button id="heart-filter-main" class="filter-btn heart-toggle-btn" onclick="toggleFavoritesView(this)">
+		❤
+	</button>
 		<button onclick="addNewProfile()" title="Nouveau profil">+</button>
 		<button onclick="deleteCurrentProfile()" title="Supprimer" style="color: var(--cyber-red)">×</button>
 	</div>
@@ -826,19 +898,22 @@ body.debug-mode .debug-info {
 
 <script>
 
-let favorites = JSON.parse(localStorage.getItem('netrunner_favs')) || [];
 let currentLang = 'fr';
 let currentType = 'all';
 let filteredCatalog = [];
 let isSearching = false; 
 let isDebugMode = false;
 let searchTimeout;
-let currentProfile = (() => {
-    const saved = localStorage.getItem('lucy_current_profile');
-    const profiles = JSON.parse(localStorage.getItem('lucy_profiles')) || {};
-    return saved && profiles[saved] ? saved : "Default";
-})();
+let currentMovieOpen = null; // Pour éviter les erreurs dans setLang
+
+// GESTION PROFIL CENTRALISÉE
 let allProfiles = JSON.parse(localStorage.getItem('lucy_profiles')) || { "Default": { "favs": [], "ratings": {} } };
+let currentProfile = localStorage.getItem('lucy_current_profile') || "Default";
+if (!allProfiles[currentProfile]) currentProfile = "Default";
+
+// Cette variable sera synchronisée par loadProfileData()
+let favorites = []; 
+let userRatings = {};
 
 function clearSearch() {
     const input = document.getElementById('main-search');
@@ -1055,18 +1130,24 @@ function switchProfile(name) {
     log(`SWITCHING TO PROFILE: ${name}`);
     currentProfile = name;
     localStorage.setItem('lucy_current_profile', name); 
-    loadProfileData();
-    applyGlobalFilters();
-		shuffleDatabase();
-		log(`LUCY_OS // SESSION: ${name.toUpperCase()}`);
+
+    // RÉINITIALISATION DU BOUTON COEUR
+    const heartBtn = document.getElementById('heart-filter-main');
+    if(heartBtn) heartBtn.classList.remove('active-heart');
+    isFavoritesMode = false;
+
+    loadProfileData(); // Recharge les "favs" du nouveau profil dans la variable "favorites"
+    applyGlobalFilters(); // Relance l'affichage normal
+    shuffleDatabase();
 }
 
 
+
 function loadProfileData() {
-    // Si le profil n'existe pas (sécurité), on prend le Default
-    const data = allProfiles[currentProfile] || allProfiles["Default"];
+    const data = allProfiles[currentProfile] || { favs: [], ratings: {} };
     favorites = data.favs || [];
     userRatings = data.ratings || {};
+    log(`LOADED: ${currentProfile} (${favorites.length} FAVS)`);
 }
 
 function saveToProfile() {
@@ -1156,12 +1237,22 @@ function init() {
         checkApiStatus();
     }
 
-    initProfiles();          // 1️⃣ Profil + menu synchronisés
-    shuffleDatabase();       // 2️⃣ Affichage basé sur CE profil
+    loadProfileData(); // 1. Charger les données du profil
+    initProfiles();    // 2. Préparer le menu déroulant
+    
+    // 3. Charger les films (on vérifie si on était en mode favoris)
+    const heartBtn = document.getElementById('heart-filter-main');
+    if (heartBtn && heartBtn.classList.contains('active-heart')) {
+        showFavoritesOnly();
+    } else {
+        shuffleDatabase();
+    }
 
     window.onscroll = () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 800) {
-            if (!isSearching) loadMore();
+            if (!isSearching && !document.getElementById('heart-filter-main').classList.contains('active-heart')) {
+                loadMore();
+            }
         }
     };
 }
@@ -1194,8 +1285,18 @@ function checkApiStatus() {
 // --- SHUFFLE & SEARCH (TES FIXES) ---
 function shuffleDatabase() {
     log("SHUFFLING DATABASE...");
-    document.getElementById('main-search').value = ""; // Vide le champ
+    
+    // 1. On vide la recherche
+    document.getElementById('main-search').value = ""; 
     isSearching = false; 
+    
+    // 2. RÉINITIALISATION DU BOUTON COEUR
+    const heartBtn = document.getElementById('heart-filter-main');
+    if (heartBtn) {
+        heartBtn.classList.remove('active-heart'); // On retire l'état "plein"
+    }
+    
+    // 3. On mélange et on réaffiche tout
     catalog.sort(() => 0.5 - Math.random());
     applyGlobalFilters();
 }
@@ -1379,19 +1480,31 @@ async function translateVisibleTitles(container) {
 // --- INTERACTIONS ---
 function toggleLike(e, id) {
     e.stopPropagation();
+    id = Number(id); 
+
+    // 1. Mise à jour de la variable locale
     if (favorites.includes(id)) {
         favorites = favorites.filter(f => f !== id);
     } else {
         favorites.push(id);
     }
-    localStorage.setItem('netrunner_favs', JSON.stringify(favorites));
-    updateRecommendations(); 
+
+    // 2. Sauvegarde immédiate dans le profil en cours
+    allProfiles[currentProfile].favs = favorites;
+    localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
     
+    // 3. Mise à jour visuelle du petit coeur sur la carte
     const heartBtns = document.querySelectorAll(`.movie-card[data-id="${id}"] .heart-btn`);
     heartBtns.forEach(btn => btn.classList.toggle('active'));
-    log("Neural Link updated.");
-	saveToProfile();
 
+    // 4. SI LE MODE COEUR EST ACTIF : On rafraîchit l'affichage immédiatement
+    const mainHeartBtn = document.getElementById('heart-filter-main');
+    if (mainHeartBtn && mainHeartBtn.classList.contains('active-heart')) {
+        showFavoritesOnly();
+    }
+
+    updateRecommendations(); // Met à jour le menu de reco en bas
+    log(`SYSTEM: NEURAL_LINK_ID_${id}_UPDATED`);
 }
 
 async function fetchSynopsis(id, el, type) {
@@ -1540,6 +1653,54 @@ function showCyberModal(message, showInput = false) {
 }
 
 window.onload = init;
+
+
+function toggleFavoritesView(btn) {
+    // .toggle ajoute la classe si elle n'est pas là, et l'enlève si elle y est
+    btn.classList.toggle('active-heart');
+
+    // On vérifie si le mode est activé pour savoir quoi afficher
+    const isFavoritesMode = btn.classList.contains('active-heart');
+
+    if (isFavoritesMode) {
+        log("SYSTEM: NEURAL_FAVORITES_ACTIVE");
+        showFavoritesOnly(); // Ta fonction qui filtre les films
+    } else {
+        log("SYSTEM: SHOWING_ALL_DATA");
+        applyGlobalFilters(); // Ta fonction qui remet tous les films
+    }
+}
+
+
+function showFavoritesOnly() {
+    const grid = document.getElementById('main-grid');
+    grid.innerHTML = ""; 
+
+    if (!favorites || favorites.length === 0) {
+        grid.innerHTML = `<div class="system-status" style="grid-column:1/-1; text-align:center; padding:50px; color:var(--cyber-red);">[!] NO_NEURAL_DATA_FOUND</div>`;
+        return;
+    }
+
+    // On filtre le catalogue : doit être dans favorites ET correspondre au type (movie/tv) choisi
+    const favData = catalog.filter(m => {
+        const idMatch = favorites.includes(Number(m.i));
+        const typeMatch = (currentType === 'all') || 
+                          (currentType === 'movie' && m.type === 'movie') || 
+                          (currentType === 'tv_anime' && m.type !== 'movie');
+        return idMatch && typeMatch;
+    });
+
+    if (favData.length === 0) {
+        grid.innerHTML = `<div class="system-status" style="grid-column:1/-1; text-align:center; padding:50px; color:var(--cyber-red);">[!] NO_MATCH_FOR_CURRENT_TYPE</div>`;
+    } else {
+        renderGridChunk(favData, 'main-grid');
+        log(`VAULT_ACCESS: ${favData.length} NODES`);
+    }
+    
+    // On met à jour les recommandations basées sur ces favoris
+    updateRecommendations();
+}
+
 </script>
 
 <div id="cyber-modal" class="modal-overlay">
