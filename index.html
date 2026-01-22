@@ -1182,35 +1182,12 @@ async function addNewProfile() {
 }
 
 
-// Fonction universelle pour remplacer confirm()
-function cyberConfirm(message) {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('cyber-modal');
-        const msg = document.getElementById('modal-message');
-        const btnYes = document.getElementById('modal-confirm');
-        const btnNo = document.getElementById('modal-cancel');
-
-        msg.innerText = message;
-        modal.style.display = 'flex';
-
-        function cleanup(result) {
-            modal.style.display = 'none';
-            btnYes.onclick = null;
-            btnNo.onclick = null;
-            resolve(result);
-        }
-
-        btnYes.onclick = () => cleanup(true);
-        btnNo.onclick = () => cleanup(false);
-    });
-}
-
 async function deleteCurrentProfile() {
     // Note : on passe 'false' car on ne veut PAS l'input text ici
     if (currentProfile === "Default") {
         const ok = await showCyberModal("WIPE DATA: Effacer les données du profil racine ?", false);
         if (ok) {
-            allProfiles["Default"] = { favorites: [], ratings: {}, lastSeen: new Date().toISOString() };
+            allProfiles["Default"] = { favs: [], ratings: {}, lastSeen: new Date().toISOString() };
             localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
             log("SYSTEM: DEFAULT_WIPED");
             switchProfile("Default");
@@ -1285,19 +1262,13 @@ function checkApiStatus() {
 // --- SHUFFLE & SEARCH (TES FIXES) ---
 function shuffleDatabase() {
     log("SHUFFLING DATABASE...");
-    
-    // 1. On vide la recherche
-    document.getElementById('main-search').value = ""; 
+        document.getElementById('main-search').value = ""; 
     isSearching = false; 
-    
-    // 2. RÉINITIALISATION DU BOUTON COEUR
-    const heartBtn = document.getElementById('heart-filter-main');
+        const heartBtn = document.getElementById('heart-filter-main');
     if (heartBtn) {
         heartBtn.classList.remove('active-heart'); // On retire l'état "plein"
     }
-    
-    // 3. On mélange et on réaffiche tout
-    catalog.sort(() => 0.5 - Math.random());
+        catalog.sort(() => 0.5 - Math.random());
     applyGlobalFilters();
 }
 
@@ -1306,23 +1277,17 @@ function debounceSearch() {
 const input = document.getElementById('main-search');
     const clearBtn = document.getElementById('clear-search');
 	clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
-    // 1. On annule le scan précédent si on tape vite
     clearTimeout(searchTimeout);
     
-    // 2. On attend 300ms après la dernière touche pressée
     searchTimeout = setTimeout(() => {
         const query = document.getElementById('main-search').value.trim();
-        
-        // 3. SEUIL : On ne cherche que si 2 lettres ou plus, 
-        // ou si le champ est vidé (pour réinitialiser l'affichage)
-        if (query.length >= 2 || query.length === 0) {
+                if (query.length >= 2 || query.length === 0) {
             search();
         }
     }, 300);
 }
 
 function search() {
-    // La recherche appelle maintenant simplement applyGlobalFilters pour maintenir la cohérence
     applyGlobalFilters();
 }
 
@@ -1446,7 +1411,6 @@ function renderGridChunk(data, gridId) {
     
     grid.insertAdjacentHTML('beforeend', html);
     
-    // TRADUCTION : On lance la traduction sur les nouveaux éléments si la langue n'est pas FR
     if(currentLang !== 'fr') {
         translateVisibleTitles(grid);
     }
@@ -1642,13 +1606,6 @@ function showCyberModal(message, showInput = false) {
             modal.style.display = 'none';
             resolve(value);
         };
-
-		confirmBtn.onclick = () => {
-			// Si l'input est affiché, on renvoie sa valeur, sinon on renvoie true
-			const value = (inputEl.style.display === 'block') ? inputEl.value.trim() : true;
-			modal.style.display = 'none';
-			resolve(value);
-		};
     });
 }
 
