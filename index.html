@@ -1158,18 +1158,26 @@ function saveToProfile() {
 }
 
 async function addNewProfile() {
-    // On appelle notre nouveau modal stylé
-    const name = await showCyberModal("NEW_PROFILE_ID_REQUIRED:", true);
+    let name = await showCyberModal("NEW_PROFILE_ID_REQUIRED:", true);
     
-    // Si l'utilisateur a cliqué sur Cancel ou n'a rien tapé
     if (!name) return;
 
-    if (allProfiles[name]) {
-        await showCyberModal("ERROR: PROFILE_ALREADY_EXISTS"); // Un petit avertissement stylé
+    // --- SÉCURISATION DU NOM ---
+    // On enlève les accents et on supprime tout ce qui n'est pas A-Z, 0-9, espace ou tiret
+    name = name.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Enlever accents
+    name = name.replace(/[^a-zA-Z0-9 \-_]/g, "").trim(); // Garder uniquement safe chars
+
+    if (name.length === 0) {
+        await showCyberModal("ERROR: INVALID_CHARACTERS_DETECTED");
         return;
     }
 
-    // Création du profil
+    if (allProfiles[name]) {
+        await showCyberModal("ERROR: PROFILE_ALREADY_EXISTS");
+        return;
+    }
+
+    // Création du profil (le nom est maintenant propre)
     allProfiles[name] = { favs: [], ratings: {} };
     localStorage.setItem('lucy_profiles', JSON.stringify(allProfiles));
 
