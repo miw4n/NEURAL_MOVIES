@@ -911,9 +911,11 @@ let allProfiles = JSON.parse(localStorage.getItem('lucy_profiles')) || { "Defaul
 let currentProfile = localStorage.getItem('lucy_current_profile') || "Default";
 if (!allProfiles[currentProfile]) currentProfile = "Default";
 
-// Cette variable sera synchronisée par loadProfileData()
 let favorites = []; 
 let userRatings = {};
+
+let recoBlacklist = [];
+
 
 function clearSearch() {
     const input = document.getElementById('main-search');
@@ -1540,46 +1542,51 @@ function updateRecommendations() {
     if (favorites.length === 0) { section.style.display = 'none'; return; }
     section.style.display = 'block';
 
-    // 1. Liste noire des tags trop larges (on les ignore pour la reco)
-	const genreBlacklist = [
-	'action', 'aventure', 'drame', 'comédie', 'animation', 
-    'fantastique', 'science fiction', 'scifi', 'thriller', 'familial', 
-    'tout', 'docs', 'documentaire', 'histoire', 'romance', 'crime', 'famille', 'anime',
-    'amour', 'mystère', 'horreur', 'guerre', 'copine', 'vie', 'femme', 'mère', 'enfant',
-    'téléfilm', 'épopée', 'ami', 'peur', 'danger', 'réalité', 'décision',
-    'personnage', 'personage', 'suspense', 'suspence',
-    'musique', 'western', 'kids', 'news', 'reality', 'soap', 'talk',
-    'action & aventure', 'science-fiction', 'guerre', 'politique',
-    'science-fiction & fantastique', 'war & politics', 'détective', 'société'
-];
-
-    // 2. Récupération des tags des favoris (en ignorant la blacklist)
+    // 1. Extraction ADN (Top Tags) - On garde le code existant
     let userTags = [];
     favorites.forEach(id => {
         let m = catalog.find(x => x.i === id);
-        if (m && m.m) {
-            const tags = m.m.split(',').map(t => t.trim().toLowerCase());
-            // On ne garde que ce qui n'est PAS générique
-            const filteredTags = tags.filter(t => !genreBlacklist.includes(t));
-            userTags.push(...filteredTags);
-        }
+        if (m && m.m) userTags.push(...m.m.split(',').map(t => t.trim().toLowerCase()));
     });
+    const tagFreq = userTags.reduce((acc, t) => { acc[t] = (acc[t] || 0) + 1; return acc; }, {});
+    const topUserTags = Object.keys(tagFreq).sort((a,b) => tagFreq[b] - tagFreq[a]).slice(0, 15);
 
-    // 3. Calcul du score pour les films du catalogue
-    const scores = filteredCatalog
-        .filter(m => !favorites.includes(m.i)) // On ne propose pas ce qui est déjà en favori
+    // 2. SCORING : On utilise filteredCatalog pour respecter tes filtres (Epoque, Durée, Type)
+    // On prend filteredCatalog à la place de catalog ici :
+    let candidates = filteredCatalog
+        .filter(m => !favorites.includes(m.i))
         .map(m => {
             const mTags = m.m ? m.m.split(',').map(t => t.trim().toLowerCase()) : [];
-            // Le score est basé uniquement sur les tags précis (ex: Cyberpunk, Voyage Temporel)
-            const matchScore = mTags.filter(t => userTags.includes(t)).length;
-            return { ...m, score: matchScore };
+            const matchScore = mTags.filter(t => topUserTags.includes(t)).length;
+            return { ...m, matchScore: matchScore };
         })
-        .filter(m => m.score > 0) // On ne garde que ceux qui ont au moins un point commun
-        .sort((a, b) => b.score - a.score)
+        .filter(m => m.matchScore > 0)
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 30); // On garde ton réglage de 30
+
+    // 3. Application du bannissement temporaire
+    let freshCandidates = candidates.filter(m => !recoBlacklist.includes(m.i));
+
+    // Si après filtrage de la blacklist il n'y a plus rien, on reset la blacklist
+    if (freshCandidates.length === 0) {
+        recoBlacklist = [];
+        freshCandidates = candidates;
+    }
+
+    // 4. Sélection aléatoire (10)
+    let finalSelection = freshCandidates
+        .sort(() => 0.5 - Math.random())
         .slice(0, 10);
 
-    document.getElementById('reco-grid').innerHTML = "";
-    renderGridChunk(scores, 'reco-grid');
+    // Mise à jour de la blacklist pour le prochain cycle
+    recoBlacklist = finalSelection.map(m => m.i);
+
+    // 5. Rendu
+    const grid = document.getElementById('reco-grid');
+    grid.innerHTML = "";
+    renderGridChunk(finalSelection, 'reco-grid');
+    
+    log(`SYSTEM: RECO_SYNC_FILTERS // CANDIDATES: ${freshCandidates.length}`);
 }
 
 function resetSystem() { if(confirm("Reset website ?")) { localStorage.clear(); location.reload(); } }
@@ -1598,13 +1605,32 @@ function showCyberModal(message, showInput = false) {
         modal.style.display = 'flex';
 
         if(showInput) setTimeout(() => inputEl.focus(), 100);
-		inputEl.onkeydown = (e) => {
-			if (e.key === "Enter") confirmBtn.click();
-		};
+
+        // --- GESTION DU BOUTON CONFIRMER ---
         confirmBtn.onclick = () => {
             const value = showInput ? inputEl.value.trim() : true;
             modal.style.display = 'none';
+            cleanup();
             resolve(value);
+        };
+
+        // --- GESTION DU BOUTON CANCEL (La correction est ici) ---
+        cancelBtn.onclick = () => {
+            modal.style.display = 'none';
+            cleanup();
+            resolve(null); // On renvoie null pour dire "Annulé"
+        };
+
+        // Nettoyage des événements pour éviter les clics fantômes
+        function cleanup() {
+            confirmBtn.onclick = null;
+            cancelBtn.onclick = null;
+            inputEl.onkeydown = null;
+        }
+
+        inputEl.onkeydown = (e) => {
+            if (e.key === "Enter") confirmBtn.click();
+            if (e.key === "Escape") cancelBtn.click(); // Optionnel: Esc pour annuler
         };
     });
 }
